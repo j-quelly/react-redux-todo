@@ -14,6 +14,21 @@
 	<script src="https://wzrd.in/standalone/deep-freeze@latest"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/react-redux/4.4.5/react-redux.min.js"></script>
 	<script type="text/babel">
+/**
+* Reducers
+* ---------------------------------------------------------------------------------
+* - an action describes the fact that something happened, but does not specify how
+* - a reducer specifies how the application state changes and makes the changes to the 
+* state object
+*/
+
+/**
+ * @name todo
+ * @desc Reducer for a single todo item.  Called by the @name todos reducer.
+ * @param {object} state - The state of the todo item
+ * @param {object} action - User action performed on the todo item and state changes
+ * @returns {object} state - Application state after modifications 
+ */
 const todo = (state, action) => {
   switch (action.type) {
     case 'ADD_TODO':
@@ -36,41 +51,79 @@ const todo = (state, action) => {
   }
 };
 
+/**
+ * @name todos
+ * @desc Reducer for the array of todo items
+ * @param {array} state - The state of the todo list component (array of objects)
+ * @param {object} action - User action performed on the todo item and state changes
+ * @returns {object} state - Application state after modifications
+ */
 const todos = (state = [], action) => {
   switch (action.type) {
     case 'ADD_TODO':
       return [
         ...state,
+        // will return the state plus a new todo item object
         todo(undefined, action)
       ];
     case 'TOGGLE_TODO':
-      return state.map(t =>
-        todo(t, action)
-      );
+      // creates a new array with the result of calling a function for every element
+      // in other words, array.map iterates over the array passing each object to the 
+      // @name todo reducer the original array is left unchanged unless 
+      // acted on by the @name todo reducer
+      return state.map(t => todo(t, action));
     default:
       return state;
   }
 };
 
-const visibilityFilter = (
-  state = 'SHOW_ALL',
-  action
-) => {
+/**
+ * @name visibilityFilter
+ * @desc Reducer for the todo visibility filters
+ * @param {string} state - Defaults to showing all items.
+ * @param {object} action - User action performed on the filter and state changes
+ * @returns {object} state - Application state after modifications
+ */
+const visibilityFilter = (state = 'SHOW_ALL', action) => {
   switch (action.type) {
     case 'SET_VISIBILITY_FILTER':
+      // returns the selected filter for the component
       return action.filter;
     default:
       return state;
   }
 };
 
-const { combineReducers } = Redux;
+/**
+ * @name combineReducers
+ * @desc The combineReducers helper function turns an object whose values are different 
+         reducing functions into a single reducing function you can pass to createStore.
+ * @arg {object} - Object of reducers to be combined
+ * @memberOf Redux
+ */
+const {combineReducers} = Redux;
 const todoApp = combineReducers({
   todos,
   visibilityFilter
 });
 
+/**
+* Action Creators
+* ---------------------------------------------------------------------------------
+* - Action creators are exactly that—functions that create actions. It's easy to conflate the terms 
+* “action” and “action creator,” so do your best to use the proper term.
+* In Redux action creators simply return an action.
+*/
+
+// start the first todo item id at 0
 let nextTodoId = 0;
+
+/**
+ * @name addTodo
+ * @desc Creates an action to be used by the dispatcher and increments the todo item id
+ * @param {string} text - The text for the new todo item
+ * @returns {object} action 
+ */
 const addTodo = (text) => {
   return {
     type: 'ADD_TODO',
@@ -79,6 +132,12 @@ const addTodo = (text) => {
   };
 };
 
+/**
+ * @name toggleTodo
+ * @desc Creates an action to be used by the dispatcher
+ * @param {string} id - the id of the todo item that has being toggled
+ * @returns {object} action 
+ */
 const toggleTodo = (id) => {
   return {
     type: 'TOGGLE_TODO',
@@ -86,6 +145,12 @@ const toggleTodo = (id) => {
   };
 };
 
+/**
+ * @name setVisibilityFilter
+ * @desc Creates an action to be used by the dispatcher
+ * @param {string} filter - the string value of the filter selected by the user
+ * @returns {object} action 
+ */
 const setVisibilityFilter = (filter) => {
   return {
     type: 'SET_VISIBILITY_FILTER',
@@ -93,14 +158,44 @@ const setVisibilityFilter = (filter) => {
   };
 };
 
-const { Component } = React;
-const { Provider, connect } = ReactRedux;
+/**
+* React Components
+* ---------------------------------------------------------------------------------
+* React components are very simple. You can think of them as simple functions that take
+* in props and state and render HTML. With this in mind, components are easy to reason 
+* about
+*/
 
-const Link = ({
-  active,
-  children,
-  onClick
-}) => {
+// require React Component class for creating UI components
+const {Component} = React;
+
+// React Redux -- simple React bindings for Redux
+// --------------------------------------------------------------------------------
+// 1.) The provider component will use the react advanced context feature to make 
+// the store available to any component inside the provider component, including 
+// grand-children
+// 1.i) Note: The context feature is an experimental React API and should rarely be used.
+// In this case the context feature is okay for dependency injection.
+// the API allows you to pass data through the component tree without having to pass
+// the props manually at every level.  Essentially the data becomes part of the global 
+// scope
+// 2.) The connect method takes the mapStateToProps and mapDispatchToProps and generates
+// a component for us.  The mapStateToProps & mapDispatchToProps describe components
+// so well that we do not need to actually write the component.
+// The result of the connect method is a container component that renders a presentational
+// component
+const {Provider, connect} = ReactRedux;
+
+/**
+ * @name Link
+ * @desc Creates a child Link UI component that accepts active, children and onClick
+ * @param {boolean} active - Determines if the Link component has been clicked 
+ * @param {string} children - FilterLink children (looks like just text)
+ * @param {function} onClick - Dispatches the setVisibilityFilter action creator.
+ * @returns child component of FilterLink
+ * @memberOf React.Component & FilterLink
+ */
+const Link = ({active, children, onClick}) => {
   if (active) {
     return <span>{children}</span>;
   }
@@ -108,175 +203,259 @@ const Link = ({
   return (
     <a href='#'
        onClick={e => {
-         e.preventDefault();
-         onClick();
-       }}
-    >
+                  e.preventDefault();
+                  onClick();
+                }}>
       {children}
     </a>
-  );
+    );
 };
 
-const mapStateToLinkProps = (
-  state,
-  ownProps
-) => {
+/**
+ * @name mapStateToLinkProps
+ * @desc Accepts the state of the Redux store and return the props that should be passed
+ * to the links.  As it stands, there is only one prop (active) that determines whether the 
+ * link displays the current visibility filter.
+ * @param {object} state - Takes the Redux store state, and returns the props that need 
+ * to be passed to the presentational Link component, so it can be rendered with 
+ * the current state.
+ * @param {object} ownProps - It is fairly common to use the container props when calculating 
+ * the child props, this is why props are passed as a second argument.  This is named ownProps
+ * to make it clear that we are referring to the container components (Link) own props and
+ * not the props that are passed to the child component which is the return value of
+ * mapeStateToLinkProps.
+ * @returns {object} props - Returns the props the depend on the current state of the
+ * Redux store.  So in this case this is just the 'todos' prop
+ */
+const mapStateToLinkProps = (state, ownProps) => {
   return {
-    active:
-      ownProps.filter ===
-      state.visibilityFilter
+    // to tell whether a link is active we need to compare the prop with 
+    // the visibility filter value from the Redux store state.
+    active: ownProps.filter === state.visibilityFilter
   };
 };
-const mapDispatchToLinkProps = (
-  dispatch,
-  ownProps
-) => {
+
+/**
+ * @name mapDispatchToLinkProps
+ * @desc Maps the dispatch method from the Redux store to the callback props
+ * of the Link component.  It specifies the behaviour --that is which callback 
+ * prop dispatches which action.
+ * @param {method} dispatch - Accepts the dispatch method from the Redux store 
+ * @param {object} ownProps - It is fairly common to use the container props when 
+ * calculating the child props, this is why props are passed as a second argument.  
+ * This is named ownProps to make it clear that we are referring to the container 
+ * components (FilterLink) own props and not the props that are passed to the child component
+ * which is (Link)
+ * @returns {object} props - Returns the props that should be passed to the todo list
+ * component and that depend on the dispatch method.
+ */
+const mapDispatchToLinkProps = (dispatch, ownProps) => {
   return {
+    // the only prop being passed down is onClick
     onClick: () => {
-      dispatch(
-        setVisibilityFilter(ownProps.filter)
-      );
+      // dispatch call which references the container props so we use ownProps
+      dispatch(setVisibilityFilter(ownProps.filter));
     }
   };
 }
-const FilterLink = connect(
-  mapStateToLinkProps,
-  mapDispatchToLinkProps
-)(Link);
 
+// The connect method takes the mapStateToLinkProps and mapDispatchToLinkProps and 
+// generates the FilterLink component for us.  The mapStateToLinkProps & mapDispatchToLinkProps
+// describe components so well that we do not need to actually write the component.
+const FilterLink = connect(mapStateToLinkProps, mapDispatchToLinkProps)(Link);
+
+// The Footer component renders three filter links and each of them have a different
+// filter prop that specifies which filter it cooresponds to.  This prop will be available
+// on the ownProps object that both mapStateToLinkProps and mapDispatchToLinkProps 
+// will receive as the second argument.  We pass these two functions to the connect call
+// which will return a container component called @name FilterLink.  
+// FilterLink will take the props that we return from the mapStateToLinkProps 
+// and mapDispatchToLinkProps and pass them as props to the Link component that it wraps.
+// We can now use the FilterLink container component and specify just the filter
+// but the underlying Link component will receive the calculated active and onClick values.
 const Footer = () => (
-  <p>
-    Show:
-    {' '}
-    <FilterLink filter='SHOW_ALL'>
-      All
-    </FilterLink>
-    {', '}
-    <FilterLink filter='SHOW_ACTIVE'>
-      Active
-    </FilterLink>
-    {', '}
-    <FilterLink filter='SHOW_COMPLETED'>
-      Completed
-    </FilterLink>
-  </p>
+<p>
+  Show:
+  {' '}
+  <FilterLink filter='SHOW_ALL'>
+    All
+  </FilterLink>
+  {', '}
+  <FilterLink filter='SHOW_ACTIVE'>
+    Active
+  </FilterLink>
+  {', '}
+  <FilterLink filter='SHOW_COMPLETED'>
+    Completed
+  </FilterLink>
+</p>
 );
 
-const Todo = ({
-  onClick,
-  completed,
-  text
-}) => (
-  <li
-    onClick={onClick}
-    style={{
-      textDecoration:
-        completed ?
-          'line-through' :
-          'none'
-    }} 
-    className={
-        completed ?
-          'completed' :
-          ''   
-    }
-  >
-    {text}
-  </li>
+/**
+ * @name Todo
+ * @desc Creates a child Todo UI component that accepts onClick, completed, & text
+ * @param {function} onClick - Dispatches the toggleTodo action creator.
+ * @param {boolean} completed - Used to determine the style and completion state of
+ * the todo item
+ * @param {string} text - Todo item text
+ * @returns child component of TodoList
+ * @memberOf React.Component & TodoList
+ */
+const Todo = ({onClick, completed, text}) => (
+<li onClick={onClick}
+    style={{ textDecoration: completed ? 'line-through' : 'none' }}
+    className={completed ? 'completed' : ''}>
+  {text}
+</li>
 );
 
-const TodoList = ({
-  todos,
-  onTodoClick
-}) => (
-  <ul>
-    {todos.map(todo =>
-      <Todo
-        key={todo.id}
-        {...todo}
-        onClick={() => onTodoClick(todo.id)}
-      />
-    )}
-  </ul>
+/**
+ * @name TodoList
+ * @desc Creates a child component of the VisibleTodoList container component that 
+ * accepts todos and onTodoClick
+ * @param {array} todos - Array of todo items
+ * @param {function} onTodoClick - Dispatches the toggleTodo action creator.
+ * @returns child component of VisibleTodoList
+ * @memberOf React.Component & VisibleTodoList
+ */
+const TodoList = ({todos, onTodoClick}) => (
+<ul>
+  {todos.map(todo => <Todo key={todo.id}
+                           {...todo}
+                           onClick={() => onTodoClick(todo.id)} />
+   )}
+</ul>
 );
 
-let AddTodo = ({ dispatch }) => {
+/**
+ * @name AddTodo
+ * @desc Reads the dispatch function from the props and returns a AddTodo container
+ * component.  It does not know how to get the store, it just hopes someone is 
+ * going to pass the dispatch to it.
+ * @param {method} dispatch - Accepts the dispatch method as a prop
+ * @returns AddTodo container component.
+ */
+let AddTodo = ({dispatch}) => {
   let input;
 
   return (
     <div>
       <input ref={node => {
-        input = node;
-      }} />
+                    input = node;
+                  }} />
       <button onClick={() => {
-        dispatch(addTodo(input.value));
-        input.value = '';
-      }}>
+                         dispatch(addTodo(input.value));
+                         input.value = '';
+                       }}>
         Add Todo
       </button>
     </div>
-  );
+    );
 };
+
+// 1.) Generates a container component that does not subscribe to the store
+// however it will pass dispatch to the component that it wraps (AddTodo Component).
+// 1.i) create a container component that will inject the dispatch function as a prop
+// the component generated by the connect function will take care of reading the
+// the store from the context
+// Note: does not subscribe to the store and accepts just the dispatch function as a 
+// prop
 AddTodo = connect()(AddTodo);
 
-const getVisibleTodos = (
-  todos,
-  filter
-) => {
+/**
+ * @name getVisibleTodos
+ * @desc Returns the filtered list of todo items based on application filter that
+ * has been selected.
+ * @param {object} todos - Object of todo items
+ * @param {string} filter - Value of the user selected filter
+ * @returns {object} todos - Array of of objects (todo items)
+ */
+const getVisibleTodos = (todos, filter) => {
   switch (filter) {
     case 'SHOW_ALL':
       return todos;
     case 'SHOW_COMPLETED':
-      return todos.filter(
-        t => t.completed
-      );
+      return todos.filter(t => t.completed);
     case 'SHOW_ACTIVE':
-      return todos.filter(
-        t => !t.completed
-      );
+      return todos.filter(t => !t.completed);
   }
 }
 
-const mapStateToTodoListProps = (
-  state
-) => {
+/**
+ * @name mapStateToTodoListProps
+ * @desc Maps the Redux store state to props of the todo list component that are
+ * are related to the data from the Redux store.
+ * @param {object} state - Takes the Redux store state, and returns the props that need to be passed to
+ * the presentational todo list component, so it can be rendered with the current
+ * state. 
+ * @returns {object} props - Returns the props the depend on the current state of the
+ * Redux store.  So in this case this is just the 'todos' prop
+ */
+const mapStateToTodoListProps = (state) => {
   return {
-    todos: getVisibleTodos(
-      state.todos,
-      state.visibilityFilter
-    )
+    // single prop 'todos' from todo list component
+    todos: getVisibleTodos(state.todos, state.visibilityFilter)
   };
 };
-const mapDispatchToTodoListProps = (
-  dispatch
-) => {
+
+/**
+ * @name mapDispatchToTodoListProps
+ * @desc Maps the dispatch method from the Redux store to the callback props
+ * of the todo list component.  It specifies the behaviour --that is which callback 
+ * prop dispatches which action.
+ * @param {method} dispatch - Accepts the dispatch method from the Redux store as 
+ * the only argument.
+ * @returns {object} props - Returns the props that should be passed to the todo list
+ * component and that depend on the dispatch method.
+ */
+const mapDispatchToTodoListProps = (dispatch) => {
   return {
+    // in this case there is only one property that depends on the dispatch method
+    // onTodoClick accepts the id of the todo item and dispatches an action
     onTodoClick: (id) => {
       dispatch(toggleTodo(id));
     }
   };
 };
+
+// The mapStateToTodoListProps & mapDispatchToTodoListProps describe the todo list
+// component so well that we do not need to actually write the component and can
+// instead generate it with the connect method from the React-Redux library.
+// React-Redux is a binding to the React library and Redux framework.
 const VisibleTodoList = connect(
   mapStateToTodoListProps,
   mapDispatchToTodoListProps
 )(TodoList);
 
+// TodoApp component
 const TodoApp = () => (
-  <div>
-    <AddTodo />
-    <VisibleTodoList />
-    <Footer />
-  </div>
+<div>
+  <AddTodo />
+  <VisibleTodoList />
+  <Footer />
+</div>
 );
 
-const { createStore } = Redux;
+/**
+ * @name createStore
+ * @desc Creates a Redux store that holds the complete state tree of your app.
+ * There should only be a single store in your app.
+ * @param {function} reducer - A reducing function that returns the next state tree, 
+ * given the current state tree and an action to handle.
+ * @returns {object} store - An object that holds the complete state of your app. 
+ * The only way to change its state is by dispatching actions. You may also subscribe 
+ * to the changes to its state to update the UI.
+ */
+const {createStore} = Redux;
 
+// render the React application
 ReactDOM.render(
   <Provider store={createStore(todoApp)}>
     <TodoApp />
   </Provider>,
   document.getElementById('root')
 );
+  
 	</script>
 </body>
 </html>
